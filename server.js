@@ -130,7 +130,13 @@ setInterval(() => {
   }
 }, 60000); // Check every minute
 
+// 1. ADD THIS SPECIFICALLY
+app.get('/', (req, res) => {
+  res.send('GuardianBox API is Active');
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`GuardianBox server running on port ${PORT}`);
+
 });
