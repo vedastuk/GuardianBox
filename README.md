@@ -1,3 +1,5 @@
+#GUARDIANBOX
+
 Standard file
 sharing services often store files in a way that
 the provider can access them. For sensitive documents legal
