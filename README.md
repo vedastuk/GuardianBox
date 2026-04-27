@@ -26,3 +26,6 @@ and drop UI for uploading
 files and generating a secure link.
 5. File Size Limits: Different file size limits based on the user's
 subscription tier.
+
+## Live Demo
+- https://vedastuk.github.io/GuardianBox/
