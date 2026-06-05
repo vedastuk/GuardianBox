@@ -7,7 +7,8 @@ import HowItWorks from './components/HowItWorks';
 import Pricing from './components/Pricing';
 import Footer from './components/Footer';
 import DecryptPage from './components/DecryptPage';
-import AuthPage, { getSession, clearSession, type UserData } from './components/AuthPage';
+import AuthPage, { type UserData } from './components/AuthPage';
+import { getSession, logoutUser, onAuthChange } from './lib/userStore';
 import PaymentPage from './components/PaymentPage';
 
 type Route =
@@ -46,7 +47,16 @@ export default function App() {
       setUser(getSession());
     };
     window.addEventListener('hashchange', onHashChange);
-    return () => window.removeEventListener('hashchange', onHashChange);
+
+    // Listen for Firebase auth state changes
+    const unsubAuth = onAuthChange((userData) => {
+      setUser(userData);
+    });
+
+    return () => {
+      window.removeEventListener('hashchange', onHashChange);
+      unsubAuth();
+    };
   }, []);
 
   const goHome = useCallback(() => {
@@ -60,8 +70,8 @@ export default function App() {
     goHome();
   }, [goHome]);
 
-  const handleLogout = useCallback(() => {
-    clearSession();
+  const handleLogout = useCallback(async () => {
+    await logoutUser();
     setUser(null);
   }, []);
 

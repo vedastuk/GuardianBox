@@ -81,13 +81,17 @@ export default function PaymentPage({ planId, onBack, onSuccess }: PaymentPagePr
 
     setProcessing(true);
     // Simulate payment processing
-    setTimeout(() => {
-      setProcessing(false);
+    setTimeout(async () => {
       // Upgrade user plan on successful payment
       const session = getSession();
       if (session && (planId === 'pro' || planId === 'payperfile')) {
-        upgradePlan(session.email, planId as Plan);
+        try {
+          await upgradePlan(session.email, planId as Plan);
+        } catch (e) {
+          console.warn('Failed to upgrade plan in Firestore:', e);
+        }
       }
+      setProcessing(false);
       setDone(true);
     }, 2500);
   };

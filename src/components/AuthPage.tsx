@@ -10,7 +10,7 @@ import {
   Check,
   AlertCircle,
 } from 'lucide-react';
-import { createUser, authenticate, saveSession } from '../lib/userStore';
+import { createUser, authenticate, signInWithGoogle, signInWithApple } from '../lib/userStore';
 import type { Plan } from '../lib/planLimits';
 
 export interface UserData {
@@ -66,31 +66,38 @@ export default function AuthPage({ initialMode, onSuccess, onBack }: AuthPagePro
 
   const clearError = () => setError('');
 
-  const doSignUp = (userName: string, userEmail: string, userPassword: string) => {
-    const ok = createUser(userName, userEmail, userPassword);
-    if (!ok) {
-      setError('An account with this email already exists. Try signing in instead.');
-      return;
+  const [loading, setLoading] = useState(false);
+
+  const doSignUp = async (userName: string, userEmail: string, userPassword: string) => {
+    setLoading(true);
+    try {
+      const userData = await createUser(userName, userEmail, userPassword);
+      setSuccessUser(userData);
+      setSuccess(true);
+    } catch (err: any) {
+      const msg = err?.code === 'auth/email-already-in-use'
+        ? 'An account with this email already exists. Try signing in instead.'
+        : err?.message || 'Sign up failed. Please try again.';
+      setError(msg);
+    } finally {
+      setLoading(false);
     }
-    // Authenticate immediately to create session
-    const found = authenticate(userEmail, userPassword);
-    if (!found) return;
-    const userData: UserData = { name: found.name, email: found.email, plan: found.plan };
-    saveSession(userData);
-    setSuccessUser(userData);
-    setSuccess(true);
   };
 
-  const doSignIn = (userEmail: string, userPassword: string) => {
-    const found = authenticate(userEmail, userPassword);
-    if (!found) {
-      setError('Invalid email or password. Check your credentials or sign up for a new account.');
-      return;
+  const doSignIn = async (userEmail: string, userPassword: string) => {
+    setLoading(true);
+    try {
+      const userData = await authenticate(userEmail, userPassword);
+      setSuccessUser(userData);
+      setSuccess(true);
+    } catch (err: any) {
+      const msg = err?.code === 'auth/invalid-credential' || err?.code === 'auth/wrong-password' || err?.code === 'auth/user-not-found'
+        ? 'Invalid email or password. Check your credentials or sign up for a new account.'
+        : err?.message || 'Sign in failed. Please try again.';
+      setError(msg);
+    } finally {
+      setLoading(false);
     }
-    const userData: UserData = { name: found.name, email: found.email, plan: found.plan };
-    saveSession(userData);
-    setSuccessUser(userData);
-    setSuccess(true);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -107,22 +114,23 @@ export default function AuthPage({ initialMode, onSuccess, onBack }: AuthPagePro
     }
   };
 
-  const handleSocialSignIn = (provider: string) => {
+  const handleSocialSignIn = async (provider: string) => {
     clearError();
-    const socialName = provider === 'google' ? 'Google User' : 'Apple User';
-    const socialEmail = provider === 'google' ? 'user@gmail.com' : 'user@icloud.com';
-    if (mode === 'signup') {
-      doSignUp(socialName, socialEmail, 'social-auth-' + provider);
-    } else {
-      // For social sign-in, auto-create if not exists
-      const ok = createUser(socialName, socialEmail, 'social-auth-' + provider);
-      const found = authenticate(socialEmail, 'social-auth-' + provider);
-      if (!found) return;
-      void ok;
-      const userData: UserData = { name: found.name, email: found.email, plan: found.plan };
-      saveSession(userData);
+    setLoading(true);
+    try {
+      const userData = provider === 'google'
+        ? await signInWithGoogle()
+        : await signInWithApple();
       setSuccessUser(userData);
       setSuccess(true);
+    } catch (err: any) {
+      if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request') {
+        // User cancelled — don't show error
+      } else {
+        setError(err?.message || `${provider} sign-in failed. Please try again.`);
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -371,9 +379,10 @@ export default function AuthPage({ initialMode, onSuccess, onBack }: AuthPagePro
 
             <button
               type="submit"
-              className="w-full py-3 rounded-xl text-sm font-semibold bg-gradient-to-r from-guardian-600 to-guardian-500 text-white hover:from-guardian-500 hover:to-guardian-400 shadow-lg shadow-guardian-600/25 transition-all mt-2"
+              disabled={loading}
+              className="w-full py-3 rounded-xl text-sm font-semibold bg-gradient-to-r from-guardian-600 to-guardian-500 text-white hover:from-guardian-500 hover:to-guardian-400 shadow-lg shadow-guardian-600/25 transition-all mt-2 disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {mode === 'signin' ? 'Sign In' : 'Create Account'}
+              {loading ? 'Please wait...' : mode === 'signin' ? 'Sign In' : 'Create Account'}
             </button>
           </form>
 
